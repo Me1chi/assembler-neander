@@ -21,7 +21,7 @@ impl NeanderMem {
     fn new() -> Self {
         NeanderMem {
             arr: [0; FULL_SIZE],
-            code_seg: 0,
+            code_seg: CODE_SEG,
             data_seg: DATA_SEG,
             code_seg_byte: 0,
             data_seg_byte: 0,
@@ -49,6 +49,20 @@ impl NeanderMem {
 
         self.code_seg_byte = curr_byte;
     }
+
+    fn to_output_file(&self, filename: &str) -> std::io::Result<()> {
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(filename)?;
+
+        file.write_all(&[0x03, 0x4e, 0x44, 0x52])?;
+        file.write_all(&self.arr)?;
+
+        Ok(())
+    }
 }
 
 enum Token {
@@ -66,6 +80,27 @@ enum Token {
 }
 
 impl Token {
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+
+        use Token::*;
+
+        match s {
+            "nop" => Ok(Nop),
+            "sta" => Ok(Sta),
+            "lda" => Ok(Lda),
+            "add" => Ok(Add),
+            "or" => Ok(Or),
+            "and" => Ok(And),
+            "not" => Ok(Not),
+            "jmp" => Ok(Jmp),
+            "jn" => Ok(Jn),
+            "jz" => Ok(Jz),
+            "hlt" => Ok(Hlt),
+            _ => Err(()),
+        }
+
+    }
 
     fn to_opcode(&self) -> u8 {
 
@@ -87,8 +122,15 @@ impl Token {
     }
 }
 
+const COMMENT_CHAR: char = ';';
 
+fn trim_comment(s: &mut String) {
+    let index = s.find(COMMENT_CHAR);
 
+    if let Some(i) = index {
+        s.truncate(i);
+    }
+}
 
 fn main() -> std::io::Result<()> {
 
@@ -96,17 +138,15 @@ fn main() -> std::io::Result<()> {
 
     use Token::*;
 
-    mem.write_ins_addr(Lda, Some(128));
+    let mut minha_linha_entrada = String::from("lda;azul escuro");
+    trim_comment(&mut minha_linha_entrada);
+    let meu_token = Token::from_str(&minha_linha_entrada).unwrap();
+
+    mem.write_ins_addr(meu_token, Some(128));
     mem.write_ins_addr(Add, Some(129));
 
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open("output.mem")?;
-
-    file.write_all(&[0x03, 0x4e, 0x44, 0x52])?;
-    file.write_all(&mem.arr)?;
+    // Output file writing
+    mem.to_output_file("output.mem")?;
 
     Ok(())
 }
