@@ -1,0 +1,22 @@
+esse arquivo aqui          ; ta cheio de comentario
+
+.data
+      whitespaces ;     linhas em branco
+
+
+  COISAS FORA DO LUGAR E TAL NE
+
+
+
+isso_é_um_label: eu acho 
+
+
+  ; azul 
+
+.code
+
+  fora que VAI TER UMA MISTURA; DE LETRAS MAISUCLA e minusculars sSssSS ne 
+
+
+
+  pode vê que até coisa acentuada funcionarÁ perfeitameiiiiinte; pOrqie o String do Rust lida bem com isso h

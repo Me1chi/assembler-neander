@@ -1,7 +1,10 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 
+use frontend::*;
+
 mod converter;
+mod frontend;
 
 const MEM_SIZE: usize = 256;
 const FULL_SIZE: usize = 2*MEM_SIZE;
@@ -122,20 +125,12 @@ impl Token {
     }
 }
 
-const COMMENT_CHAR: char = ';';
-
-fn trim_comment(s: &mut String) {
-    let index = s.find(COMMENT_CHAR);
-
-    if let Some(i) = index {
-        s.truncate(i);
-    }
-}
-
 fn main() -> std::io::Result<()> {
 
     let mut mem = NeanderMem::new();
 
+
+    // TESTING
     use Token::*;
 
     let mut minha_linha_entrada = String::from("lda;azul escuro");
@@ -144,6 +139,15 @@ fn main() -> std::io::Result<()> {
 
     mem.write_ins_addr(meu_token, Some(128));
     mem.write_ins_addr(Add, Some(129));
+
+
+    create_build_file("arquivo_zoado.txt")?;
+
+    let info = SegInfo::from_build()?;
+    println!("{:?}", info);
+
+
+    // END TESTING
 
     // Output file writing
     mem.to_output_file("output.mem")?;
