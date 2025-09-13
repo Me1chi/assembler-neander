@@ -146,6 +146,9 @@ fn main() -> std::io::Result<()> {
     let info = SegInfo::from_build()?;
     println!("{:?}", info);
 
+    let label_info = LabelInfo::from_build(info)?;
+    println!("{:?}", label_info);
+
 
     // END TESTING
 

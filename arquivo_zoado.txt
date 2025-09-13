@@ -14,8 +14,13 @@ isso_é_um_label: eu acho
   ; azul 
 
 .code
+esse_label_agora_faz_parte_do_segmento_de_codigo: pode olhar la
 
   fora que VAI TER UMA MISTURA; DE LETRAS MAISUCLA e minusculars sSssSS ne 
+
+        label_sem_nada_na_linha:
+        so 
+        esse_eh_o_depois: depois
 
 
 
