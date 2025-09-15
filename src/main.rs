@@ -9,7 +9,7 @@ mod frontend;
 const MEM_SIZE: usize = 256;
 const FULL_SIZE: usize = 2*MEM_SIZE;
 const CODE_SEG: usize = 0;
-const DATA_SEG: usize = FULL_SIZE/2;
+const DATA_SEG: usize = MEM_SIZE/2;
 
 pub struct NeanderMem {
     arr: [u8; FULL_SIZE],
@@ -140,15 +140,13 @@ fn main() -> std::io::Result<()> {
     mem.write_ins_addr(meu_token, Some(128));
     mem.write_ins_addr(Add, Some(129));
 
+    create_build_file("arquivo_ajeitado.txt", BUILD_FILE_NAME)?;
 
-    create_build_file("arquivo_zoado.txt")?;
+    let info = SegInfo::from_build(BUILD_FILE_NAME)?;
+    let label_info = LabelInfo::new(&info, &mem, u8::MAX.into(), BUILD_FILE_NAME)?;
+    println!("{:?}", label_info); println!("{:?}", info);
 
-    let info = SegInfo::from_build()?;
-    println!("{:?}", info);
-
-    let label_info = LabelInfo::from_build(info)?;
-    println!("{:?}", label_info);
-
+    label_info.apply_to_operands( BUILD_FILE_NAME)?;
 
     // END TESTING
 

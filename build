@@ -1,8 +1,9 @@
-whitespaces
-coisas fora do lugar e tal ne
-eu acho
-pode olhar la
-fora que vai ter uma mistura
-so
-depois
-pode vê que até coisa acentuada funcionará perfeitameiiiiinte
+72
+4
+lda 128
+add 255
+sta 128
+lda 129
+not
+add 254
+jmp 4

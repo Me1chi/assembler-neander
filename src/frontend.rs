@@ -1,48 +1,8 @@
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 
-// The goal of this part of the code is to:
-//  - First, remove all the comments
-//  - Remove all the trailling whitespaces and blank lines
-//      - Save the file (build).
-//
-//  - Open the new build file
-//      - Look for wrong things, these are:
-//          - Wrong instructions
-//          - Wrong directives
-//          - Wrong labels
-//          - Inconscistent operands
-//          - Too many labels or immediate addressings
-//          - Two things in the same line (e.g. A label and a directive)
-//          - Report them and their lines to the user
-//
-//  - NOW THE FILE IS PERFECTLY WRITTEN
-//
-//  - Track where .code and .data start AND HOW MANY WORDS THERE'RE "INSIDE" THEM
-//  - Delete their directives
-//
-//  - Remove all the \n's for whitespaces
-//
-//  - Put all the label lines in place:
-//      - How? Iterate through the entire file incrementing
-//              a counter that will be push into the Vec.
-//              - When a label is found:
-//                  - Push a pair containing the name (label itself)
-//                      and the line it represents.
-//                  - DELETE IT.
-//
-//              - Now when a label inside a instruction is found:
-//                  - Iterate through the vector and find the
-//                      corresponding line name. Change the label
-//                      to it
-//
-//  - NOW THERE'RE ONLY INSTRUCTIONS, NUMBERS ANNNNND '$'.
-//
-//  - Yeah, find all the occurences of the $x (where x is an 8-bit number)
-//      - For EACH, test if the following exists, and, if it does,
-//          just "point" into it.
-//      - Assign (backwards) an address for each different number found,
-//      push its address and literal value to a Vec.
+use crate::NeanderMem;
+
 //
 //  - Now THERE'RE LITERALLY ONLY INSTRUCTIONS AND NUMBERS
 //      - Just parse each line to a pair (Instruction, Option<Operand>)
@@ -50,10 +10,11 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 //  - Write the output.mem
 //  - Done
 
-const BUILD_FILE_NAME: &str = "build";
+pub const BUILD_FILE_NAME: &str = "build";
 const TEMPORARY_FILE_NAME: &str = "tmp-build";
 const COMMENT_CHAR: char = ';';
 const LABEL_CHAR: char = ':';
+const IMMEDIATE_ADDR_CHAR: char = '$';
 
 pub enum CustomError {
     Instruction,
@@ -96,20 +57,9 @@ impl SegInfo {
         }
     }
 
-    pub fn from_build() -> Result<Self, std::io::Error> {
-        let build_file = OpenOptions::new()
-            .write(false)
-            .read(true)
-            .open(BUILD_FILE_NAME)?;
-
-        let tmp_file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(TEMPORARY_FILE_NAME)?;
-
-        let build = BufReader::new(build_file);
-        let mut tmp = BufWriter::new(tmp_file);
+    pub fn from_build(build_filename: &str) -> Result<Self, std::io::Error> {
+        let build = open_read(build_filename)?;
+        let mut tmp = open_write(TEMPORARY_FILE_NAME)?;
 
         // Initial file handling done
 
@@ -158,7 +108,7 @@ impl SegInfo {
             }
         }
 
-        fs::rename(TEMPORARY_FILE_NAME, BUILD_FILE_NAME)?;
+        fs::rename(TEMPORARY_FILE_NAME, build_filename)?;
 
         Ok(info)
 
@@ -187,30 +137,9 @@ impl Label {
         }
     }
 
-}
-
-#[derive(Debug)]
-pub struct LabelInfo {
-    labels: Vec<Label>,
-}
-
-impl LabelInfo {
-
-    pub fn from_build(seg_info: SegInfo) -> Result<Self, std::io::Error> {
-
-        let build_file = OpenOptions::new()
-            .write(false)
-            .read(true)
-            .open(BUILD_FILE_NAME)?;
-
-        let tmp_file = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(TEMPORARY_FILE_NAME)?;
-
-        let build = BufReader::new(build_file);
-        let mut tmp = BufWriter::new(tmp_file);
+    pub fn vec_from_build(seg_info: &SegInfo, mem: &NeanderMem, build_filename: &str) -> Result<Vec<Self>, std::io::Error> {
+        let build = open_read(build_filename)?;
+        let mut tmp = open_write(TEMPORARY_FILE_NAME)?;
 
         let mut labels: Vec<Label> = Vec::new();
 
@@ -225,14 +154,12 @@ impl LabelInfo {
             let first_word = words.next().expect("HERE THERE SHOULDN'T BE AN EMPTY LINE");
             if let Some(mut label) = Label::from_str_counter(first_word, line_counter) {
 
-                // AQUI FALTA FAZER A MATEMATICA PRA FAZER SENTIDO A LINHA
-                // E O SEGMENTO, SE NAO TIPO ELE VAI TAR NA LINHA 11 MAS EH DE DADOS
-                // ENT TINHA QUE SER LINHA SEI LA 91
-
                 if line_counter >= seg_info.code.addr && line_counter < seg_info.code.addr + seg_info.code.len {
                     label.addr -= seg_info.code.addr;
+                    label.addr += mem.code_seg;
                 } else if line_counter >= seg_info.data.addr && line_counter < seg_info.data.addr + seg_info.data.len {
                     label.addr -= seg_info.data.addr;
+                    label.addr += mem.data_seg;
                 }
 
 
@@ -252,11 +179,138 @@ impl LabelInfo {
             }
         }
 
-        fs::rename(TEMPORARY_FILE_NAME, BUILD_FILE_NAME)?;
+        fs::rename(TEMPORARY_FILE_NAME, build_filename)?;
 
+        Ok(labels)
+
+    }
+}
+
+#[derive(Debug)]
+pub struct ImmediateAddressing {
+    value: u8,
+    addr: usize,
+}
+
+impl ImmediateAddressing {
+
+    pub fn vec_from_build(last_mem_addr: usize, build_filename: &str) -> Result<Vec<Self>, std::io::Error> {
+        let build = open_read(build_filename)?;
+        let mut tmp = open_write(TEMPORARY_FILE_NAME)?;
+
+        let mut addrs: Vec<ImmediateAddressing> = Vec::new();
+
+        let mut curr_addr = last_mem_addr;
+        for line in build.lines() {
+            let line = line?;
+
+            // The operand that can be immediate or not
+            let mut maybe_operand = line
+                .split_whitespace()
+                .last()
+                .expect("NO LINES SHOULD BE EMPTY AT THIS POINT")
+                .chars();
+
+            let mut new_line_vec: Vec<&str> = line
+                .split_whitespace()
+                .collect();
+
+            let addr_string: String;
+            if let Some(c) = maybe_operand.next() && c == IMMEDIATE_ADDR_CHAR {
+                let value = maybe_operand
+                    .collect::<String>()
+                    .parse()
+                    .expect("SHOULD BE AN 8 BIT NUMBER HERE");
+
+
+                let mut is_already_added = false;
+                let mut true_addr = 0;
+                for item in &addrs {
+                    if value == item.value {
+                        is_already_added = true;
+                        true_addr = item.addr;
+                    }
+                }
+
+                if !is_already_added {
+                    addrs.push(ImmediateAddressing {
+                        value,
+                        addr: curr_addr,
+                    });
+
+                    true_addr = curr_addr;
+                    curr_addr -= 1;
+                }
+                addr_string = true_addr.to_string(); 
+
+                new_line_vec.pop();
+                new_line_vec.push(&addr_string);
+            }
+
+            let new_line = new_line_vec.join(" ");
+
+            writeln!(tmp, "{}", new_line)?;
+
+        }
+
+        fs::rename(TEMPORARY_FILE_NAME, build_filename)?;
+
+        Ok(addrs)
+
+    }
+
+}
+
+#[derive(Debug)]
+pub struct LabelInfo {
+    labels: Vec<Label>,
+    immediates: Vec<ImmediateAddressing>,
+}
+
+impl LabelInfo {
+
+    pub fn new(info: &SegInfo, mem: &NeanderMem, last_mem_addr: usize, build_filename: &str) -> Result<Self, std::io::Error> {
         Ok(LabelInfo {
-            labels,
+            labels: Label::vec_from_build(info, mem, build_filename)?,
+            immediates: ImmediateAddressing::vec_from_build(last_mem_addr, build_filename)?,
         })
+    }
+
+    pub fn apply_to_operands(&self, build_filename: &str) -> Result<(), std::io::Error> {
+
+        let build = open_read(build_filename)?;
+        let mut tmp = open_write(TEMPORARY_FILE_NAME)?;
+
+        for line in build.lines() {
+            let line = line?;
+            let maybe_label = line.clone()
+                .split_whitespace()
+                .last()
+                .expect("THERE SHOULD BE NO EMPTY LINES")
+                .to_string();
+
+            let mut new_line_vec: Vec<&str> = line
+                .split_whitespace()
+                .collect();
+
+            let true_addr: String;
+            if let Some(label) = self.labels
+                .iter()
+                .find(|x| x.name == maybe_label) {
+
+
+                true_addr = label.addr.to_string();
+                new_line_vec.pop();
+                new_line_vec.push(&true_addr);
+            }
+
+            let line = new_line_vec.join(" ");
+            writeln!(tmp, "{}", line)?;
+        }
+
+        fs::rename(TEMPORARY_FILE_NAME, build_filename)?;
+
+        Ok(())
 
     }
 
@@ -270,22 +324,9 @@ pub fn trim_comment(s: &mut String) {
     }
 }
 
-pub fn create_build_file(source_filename: &str) -> std::io::Result<()> {
-
-    let source_code_file = OpenOptions::new()
-        .write(false)
-        .read(true)
-        .open(source_filename)?;
-
-    let build_file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(BUILD_FILE_NAME)?;
-
-
-    let src = BufReader::new(source_code_file);
-    let mut build = BufWriter::new(build_file);
+pub fn create_build_file(source_filename: &str, build_filename: &str) -> std::io::Result<()> {
+    let src = open_read(source_filename)?;
+    let mut build = open_write(build_filename)?;
 
     for line in src.lines() {
 
@@ -300,6 +341,24 @@ pub fn create_build_file(source_filename: &str) -> std::io::Result<()> {
     }
 
     Ok(())
+}
+
+fn open_read(path: &str) -> std::io::Result<BufReader<std::fs::File>> {
+    Ok(BufReader::new(
+        OpenOptions::new()
+            .read(true)
+            .open(path)?
+    ))
+}
+
+fn open_write(path: &str) -> std::io::Result<BufWriter<std::fs::File>> {
+    Ok(BufWriter::new(
+        OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(path)?
+    ))
 }
 
 

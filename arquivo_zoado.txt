@@ -22,6 +22,12 @@ esse_label_agora_faz_parte_do_segmento_de_codigo: pode olhar la
         so 
         esse_eh_o_depois: depois
 
+abaixo_uma_instrucao_seria:
+    LDA $41
+    ADD $2
+
+    AND $41
+    XOR isso_é_um_label
 
 
   pode vê que até coisa acentuada funcionarÁ perfeitameiiiiinte; pOrqie o String do Rust lida bem com isso h
