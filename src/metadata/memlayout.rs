@@ -1,5 +1,6 @@
 use std::{fs::OpenOptions, io::Write};
-use crate::token::Token;
+
+use crate::{encoder::Instruction, metadata::labelinfo::immediatetrick::ImmediateAddressing};
 
 
 pub const MEM_SIZE: usize = 256;
@@ -33,18 +34,18 @@ impl NeanderMem {
         }
     }
 
-    pub fn write_ins_addr(&mut self, token: Token, addr: Option<u8>) {
+    pub fn write_instruction(&mut self, ins: Instruction) {
         let code_seg = self.code_seg;
         let mut curr_byte = self.code_seg_byte;
         let padding = 0x00;
 
-        self.arr[code_seg + curr_byte] = token.to_opcode();
+        self.arr[code_seg + curr_byte] = ins.mnemonic.to_opcode();
         curr_byte += 1;
 
         self.arr[code_seg + curr_byte] = padding;
         curr_byte += 1;
 
-        if let Some(addr) = addr {
+        if let Some(addr) = ins.addr {
             self.arr[code_seg + curr_byte] = addr;
             curr_byte += 1;
 
@@ -53,6 +54,28 @@ impl NeanderMem {
         }
 
         self.code_seg_byte = curr_byte;
+    }
+
+    pub fn write_data(&mut self, data: u8) {
+        let data_seg = self.data_seg * 2; // The *2 here is because how Weber implemented
+        // the Simulator 
+        let mut curr_byte = self.data_seg_byte;
+        let padding = 0x00;
+
+        self.arr[data_seg + curr_byte] = data;
+        curr_byte += 1;
+
+        //Padding
+        self.arr[data_seg + curr_byte] = padding;
+        curr_byte += 1;
+
+        self.data_seg_byte = curr_byte;
+    }
+
+    pub fn write_reverse_data(&mut self, data: Vec<ImmediateAddressing>) {
+        for i in data {
+            self.arr[i.addr * 2] = i.value;
+        }
     }
 
     pub fn to_output_file(&self, filename: &str) -> std::io::Result<()> {

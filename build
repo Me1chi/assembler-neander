@@ -1,9 +1,0 @@
-72
-4
-lda 128
-add 255
-sta 128
-lda 129
-not
-add 254
-jmp 4

@@ -6,8 +6,8 @@ const IMMEDIATE_ADDR_CHAR: char = '$';
 
 #[derive(Debug)]
 pub struct ImmediateAddressing {
-    value: u8,
-    addr: usize,
+    pub value: u8,
+    pub addr: usize,
 }
 
 impl ImmediateAddressing {

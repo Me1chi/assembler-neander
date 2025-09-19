@@ -5,8 +5,8 @@ pub mod label;
 
 #[derive(Debug)]
 pub struct LabelInfo {
-    labels: Vec<Label>,
-    immediates: Vec<ImmediateAddressing>,
+    pub labels: Vec<Label>,
+    pub immediates: Vec<ImmediateAddressing>,
 }
 
 impl Default for LabelInfo {
