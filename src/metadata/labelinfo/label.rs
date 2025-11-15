@@ -44,10 +44,10 @@ impl Label {
 
                 if line_counter >= seg_info.code.addr && line_counter < seg_info.code.addr + seg_info.code.len {
                     label.addr -= seg_info.code.addr;
-                    label.addr += mem.code_seg;
+                    label.addr += mem.code_seg();
                 } else if line_counter >= seg_info.data.addr && line_counter < seg_info.data.addr + seg_info.data.len {
                     label.addr -= seg_info.data.addr;
-                    label.addr += mem.data_seg;
+                    label.addr += mem.data_seg();
                 }
 
 

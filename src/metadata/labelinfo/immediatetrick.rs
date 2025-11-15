@@ -1,5 +1,4 @@
 use crate::metadata::Metadata;
-use crate::metadata::memlayout::MEM_SIZE;
 
 
 const IMMEDIATE_ADDR_CHAR: char = '$';
@@ -16,7 +15,7 @@ impl ImmediateAddressing {
 
         let mut dst = Vec::new();
 
-        let last_mem_addr = MEM_SIZE - 1;
+        let last_mem_addr = input.mem_layout.mem_size - 1;
         let mut addrs: Vec<ImmediateAddressing> = Vec::new();
 
         let mut curr_addr = last_mem_addr;

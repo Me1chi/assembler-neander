@@ -13,17 +13,17 @@ pub struct Metadata {
 
 impl Default for Metadata {
     fn default() -> Self {
-        Self::new()
+        Self::new(true)
     }
 }
 
 impl Metadata {
 
-    pub fn new() -> Self {
+    pub fn new(target_sim: bool) -> Self {
         Metadata {
             seg_info: SegInfo::new(),
             label_info: LabelInfo::new(),
-            mem_layout: NeanderMem::new(),
+            mem_layout: NeanderMem::new(target_sim),
             text: String::new(),
         }
     }

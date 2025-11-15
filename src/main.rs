@@ -1,5 +1,22 @@
-use std::{env, fs};
-use assembler_neander::{encoder::assemble, metadata::{labelinfo::{immediatetrick::ImmediateAddressing, label::Label, LabelInfo}, segment::SegInfo, to_lower_chop_comment, Metadata}, utils::pipeline::Pipeline};
+use std::{
+    env,
+    fs
+};
+
+use assembler_neander::{
+    encoder::assemble,
+    metadata::{
+        labelinfo::{
+            immediatetrick::ImmediateAddressing,
+            label::Label,
+            LabelInfo
+        },
+        segment::SegInfo,
+        to_lower_chop_comment,
+        Metadata
+    },
+    utils::pipeline::Pipeline
+};
 
 fn main() -> std::io::Result<()> {
 
@@ -24,8 +41,10 @@ fn main() -> std::io::Result<()> {
         output_filename = String::from("output.mem");
     }
 
-    let mut metadata = Metadata::new();
+    // TODO: AQUI TEM QUE ARRUMAR O TARGET SIM PRA DETECTAR FLAG
+    let mut metadata = Metadata::new(false);
     let mut frontend = Pipeline::new();
+
     frontend.add(      to_lower_chop_comment);
     frontend.add(      SegInfo::resolve_seginfo);
     frontend.add(      Label::resolve_label_defs);
@@ -38,7 +57,7 @@ fn main() -> std::io::Result<()> {
 
     // Later I will create a flag so the user can see
     // the intermediate build file
-    //fs::write("build", &metadata.text)?;
+    // fs::write("build", &metadata.text)?;
 
     let mem = assemble(metadata);
 
