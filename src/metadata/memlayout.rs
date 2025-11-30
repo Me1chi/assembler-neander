@@ -60,6 +60,15 @@ impl NeanderMem {
         let padding = 0x00;
 
         self.arr[code_seg + curr_byte] = ins.mnemonic.to_opcode();
+
+        if let Some(dst) = ins.destination {
+            self.arr[code_seg + curr_byte] += dst << 2;
+        }
+
+        if let Some(src) = ins.source {
+            self.arr[code_seg + curr_byte] += src;
+        }
+
         curr_byte += 1;
 
         if self.target_sim {

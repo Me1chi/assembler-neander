@@ -22,6 +22,11 @@ fn main() -> std::io::Result<()> {
 
     let source_filename: String;
     let output_filename: String;
+
+    //TODO: AQUI eh onde eu vou detectar primitivamente
+    // as flags, DE MANEIRA BEM PRIMITIVA MESMO
+    // MAS A ENTREGA DO TRABALHO EH NESSA QUINTA...
+
     let mut args = env::args();
     args.next(); // Descarta o nome do binario
 
@@ -41,8 +46,23 @@ fn main() -> std::io::Result<()> {
         output_filename = String::from("output.mem");
     }
 
+    // Third argument
+    let target_sim = if let Some(target) = args.next() {
+        target == "simulation"
+    } else {
+        false
+    };
+
+    // Fourth argument
+    let extended = if let Some(ext) = args.next() {
+        ext != "no-extension"
+    } else {
+        true
+    };
+
+
     // TODO: AQUI TEM QUE ARRUMAR O TARGET SIM PRA DETECTAR FLAG
-    let mut metadata = Metadata::new(false);
+    let mut metadata = Metadata::new(target_sim);
     let mut frontend = Pipeline::new();
 
     frontend.add(      to_lower_chop_comment);
@@ -59,7 +79,7 @@ fn main() -> std::io::Result<()> {
     // the intermediate build file
     // fs::write("build", &metadata.text)?;
 
-    let mem = assemble(metadata);
+    let mem = assemble(metadata, extended);
 
     // Output file writing
     mem.to_output_file(&output_filename)?;

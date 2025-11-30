@@ -12,6 +12,12 @@ pub enum Mnemonic {
     Jn,
     Jz,
     Hlt,
+
+    // Extension instructions
+    Xor,
+    Neg,
+    Sub,
+    Mul,
 }
 
 impl Mnemonic {
@@ -22,8 +28,8 @@ impl Mnemonic {
 
         match s {
             "nop" => Nop,
-            "sta" => Sta,
-            "lda" => Lda,
+            "sta" | "sr" => Sta,
+            "lda" | "lr" => Lda,
             "add" => Add,
             "or" => Or,
             "and" => And,
@@ -32,6 +38,10 @@ impl Mnemonic {
             "jn" => Jn,
             "jz" => Jz,
             "hlt" => Hlt,
+            "xor" => Xor,
+            "neg" => Neg,
+            "sub" => Sub,
+            "mul" => Mul,
             _ => Nop
         }
 
@@ -53,6 +63,13 @@ impl Mnemonic {
             Jn => 0b1001,
             Jz => 0b1010,
             Hlt => 0b1111,
+
+            // Extensions
+            Xor => 0b0111,
+            Neg => 0b1100,
+            Sub => 0b1101,
+            Mul => 0b1110
+
         }
     }
 }
@@ -60,28 +77,119 @@ impl Mnemonic {
 pub struct Instruction {
 
     pub mnemonic: Mnemonic,
+    pub destination: Option<u8>,
+    pub source: Option<u8>,
     pub addr: Option<u8>,
 
 }
 
 impl Instruction {
 
-    fn from_line(line: &str) -> Self {
+    fn from_line(line: &str, extended: bool) -> Self {
 
         let mut tokens = line.split_whitespace();
 
-        Instruction {
-            mnemonic: Mnemonic::from_text(tokens.next().expect("NO EMPTY LINES EXPECTED")) ,
-            addr: if let Some(addr ) = tokens.next() {
-                addr.parse().ok()
-            } else {
-                None
+
+        // Instrucao R2, 131
+
+        if extended {
+
+            let mnemonic =  Mnemonic::from_text(tokens.next().expect("NO EMPTY LINES EXPECTED"));
+            let destination;
+            let source;
+            let addr;
+
+            match mnemonic {
+                Mnemonic::Lda | Mnemonic::Sta => {
+
+                    destination =  tokens.next().map(|dst|
+                        dst.chars()
+                            .last()
+                            .expect("Register number missing!")
+                            .to_digit(10)
+                            .expect("Register number in a wrong form!") as u8);
+
+                    source = None;
+
+                    addr =  if let Some(addr ) = tokens.next() {
+                        addr.parse().ok()
+                    } else {
+                        None
+                    };
+
+                },
+                Mnemonic::Jmp | Mnemonic::Jn | Mnemonic::Jz => {
+
+                    destination = None;
+                    source = None;
+
+                    addr =  if let Some(addr ) = tokens.next() {
+                        addr.parse().ok()
+                    } else {
+                        None
+                    };
+
+                },
+
+                Mnemonic::Neg | Mnemonic::Not => {
+
+                    destination =  tokens.next().map(|dst|
+                        dst.chars()
+                            .last()
+                            .expect("Register number missing!")
+                            .to_digit(10)
+                            .expect("Register number in a wrong form!") as u8);
+
+                    source = None;
+                    addr = None;
+
+                },
+
+                _ => {
+
+                    destination =  tokens.next().map(|dst|
+                        dst.chars()
+                            .last()
+                            .expect("Register number missing!")
+                            .to_digit(10)
+                            .expect("Register number in a wrong form!") as u8);
+
+                    source = tokens.next().map(|dst|
+                        dst.chars()
+                            .last()
+                            .expect("Register number missing!")
+                            .to_digit(10)
+                            .expect("Register number in a wrong form!") as u8);
+
+
+                    addr = None;
+                }
             }
+
+            Instruction {
+                mnemonic,
+                destination,
+                source,
+                addr,
+            }
+        } else {
+            Instruction {
+                mnemonic: Mnemonic::from_text(tokens.next().expect("NO EMPTY LINES EXPECTED")) ,
+                destination: None,
+                source: None,
+                addr: if let Some(addr ) = tokens.next() {
+                    addr.parse().ok()
+                } else {
+                    None
+                }
+            }
+
         }
     }
+
 }
 
-pub fn assemble(metadata: Metadata) -> NeanderMem {
+pub fn assemble(metadata: Metadata, extended: bool) -> NeanderMem {
 
     let mut mem = metadata.mem_layout;
     let immediates = metadata.label_info.immediates;
@@ -117,7 +225,7 @@ pub fn assemble(metadata: Metadata) -> NeanderMem {
         counting_words += line.split_whitespace().count();
 
         if on_code {
-            mem.write_instruction(Instruction::from_line(line));
+            mem.write_instruction(Instruction::from_line(line, extended));
         } else if on_data {
             mem.write_data(line.parse().expect("NO EMPTY LINES ALLOWED"));
         }
