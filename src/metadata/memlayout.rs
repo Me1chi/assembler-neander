@@ -1,4 +1,4 @@
-use std::{fs::OpenOptions, io::Write, vec};
+use std::{fs::OpenOptions, vec};
 
 use crate::{encoder::Instruction, metadata::labelinfo::immediatetrick::ImmediateAddressing};
 
@@ -126,6 +126,8 @@ impl NeanderMem {
 
     pub fn to_output_file(&self, filename: &str) -> std::io::Result<()> {
 
+        use std::io::Write;
+
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
@@ -139,6 +141,41 @@ impl NeanderMem {
         file.write_all(&self.arr)?;
 
         Ok(())
+    }
+
+    pub fn to_intel_hex(&self, filename: &str) -> std::io::Result<()> {
+
+
+        let mut filename= String::from(filename);
+        if let Some(index) = filename.find('.') {
+            filename.truncate(index)
+        };
+
+        filename.push_str(".hex");
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(filename)?;
+
+        let mut filecontent = String::new();
+
+        {
+            use std::fmt::Write;
+            for line in &self.arr {
+                writeln!(&mut filecontent, "{:02X}", line).expect("Erro ao escrever o arquivo!!");
+
+            }
+        }
+
+        {
+            use std::io::Write;
+            file.write_all(filecontent.as_bytes())?;
+        }
+        Ok(())
+
+
     }
 }
 

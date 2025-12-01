@@ -60,6 +60,13 @@ fn main() -> std::io::Result<()> {
         true
     };
 
+    // Fifth argument
+    let no_hex = if let Some(hex_mode) = args.next() {
+        hex_mode == "no-hex"
+    } else {
+        false
+    };
+
 
     // TODO: AQUI TEM QUE ARRUMAR O TARGET SIM PRA DETECTAR FLAG
     let mut metadata = Metadata::new(target_sim);
@@ -82,7 +89,12 @@ fn main() -> std::io::Result<()> {
     let mem = assemble(metadata, extended);
 
     // Output file writing
-    mem.to_output_file(&output_filename)?;
+    if no_hex {
+        mem.to_output_file(&output_filename)?;
+
+    } else {
+        mem.to_intel_hex(&output_filename)?;
+    }
 
     Ok(())
 }
