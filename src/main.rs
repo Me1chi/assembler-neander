@@ -93,7 +93,7 @@ fn main() -> std::io::Result<()> {
         mem.to_output_file(&output_filename)?;
 
     } else {
-        mem.to_intel_hex(&output_filename)?;
+        mem.to_altera_mif(&output_filename)?;
     }
 
     Ok(())

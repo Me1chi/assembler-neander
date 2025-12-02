@@ -143,7 +143,7 @@ impl NeanderMem {
         Ok(())
     }
 
-    pub fn to_intel_hex(&self, filename: &str) -> std::io::Result<()> {
+    pub fn to_altera_mif(&self, filename: &str) -> std::io::Result<()> {
 
 
         let mut filename= String::from(filename);
@@ -151,7 +151,7 @@ impl NeanderMem {
             filename.truncate(index)
         };
 
-        filename.push_str(".hex");
+        filename.push_str(".mif");
 
         let mut file = OpenOptions::new()
             .write(true)
@@ -163,10 +163,20 @@ impl NeanderMem {
 
         {
             use std::fmt::Write;
-            for line in &self.arr {
-                writeln!(&mut filecontent, "{:02X}", line).expect("Erro ao escrever o arquivo!!");
+
+            writeln!(&mut filecontent, "DEPTH = 256;\nWIDTH = 8;")
+                .expect("Erro ao formatar conteudo do arquivo");
+            writeln!(&mut filecontent, "ADDRESS_RADIX = HEX;\nDATA_RADIX = HEX;\n\nCONTENT BEGIN")
+                .expect("Erro ao formatar conteudo do arquivo");
+
+            for (line_num, mem_pos) in self.arr.iter().enumerate() {
+                writeln!(&mut filecontent, "    {:02X} : {:02X};", line_num, mem_pos).expect("Erro ao formatar conteudo do arquivo!!");
 
             }
+
+            write!(&mut filecontent, "END;")
+                .expect("Erro ao formatar conteudo do arquivo");
+
         }
 
         {
